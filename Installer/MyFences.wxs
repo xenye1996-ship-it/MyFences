@@ -1,0 +1,39 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="MyFences" Manufacturer="MyFences" Version="1.0.1"
+           UpgradeCode="B5951849-3AF4-4FBC-89CD-28269734BC32" Scope="perUser" Language="1049">
+    <MajorUpgrade DowngradeErrorMessage="Установлена более новая версия MyFences." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+    <Icon Id="AppIcon" SourceFile="$(var.ProjectRoot)\Assets\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/xenye1996-ship-it/MyFences" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="MyFences">
+          <Component Id="Application" Guid="8CF60159-FBAA-4DA7-8795-830672CDBEA4">
+            <File Id="AppExe" Source="$(var.PublishDir)\MyFences.exe" />
+            <File Id="Readme" Source="$(var.ProjectRoot)\README.md" />
+            <RegistryValue Root="HKCU" Key="Software\MyFences" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="MyFencesStartMenuFolder" Name="MyFences">
+        <Component Id="StartMenuShortcut" Guid="63E6376C-755B-4517-8800-D17EAB159977">
+          <Shortcut Id="StartMenuLink" Name="MyFences" Target="[#AppExe]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+          <RemoveFolder Id="RemoveStartMenu" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\MyFences" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="432C8F22-E287-4719-B367-50DA32B1C11A">
+        <Shortcut Id="DesktopLink" Name="MyFences" Target="[#AppExe]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+        <RegistryValue Root="HKCU" Key="Software\MyFences" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+    <Feature Id="MainFeature" Title="MyFences" Level="1">
+      <ComponentRef Id="Application" /><ComponentRef Id="StartMenuShortcut" /><ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Package>
+</Wix>

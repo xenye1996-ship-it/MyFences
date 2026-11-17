@@ -1,0 +1,14 @@
+.sdk/
+.tools/
+.vs/
+.env
+.env.*
+*.pfx
+*.p12
+*.key
+*.log
+bin/
+obj/
+artifacts/
+dotnet-install.ps1
+*.user

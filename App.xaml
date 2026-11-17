@@ -1,0 +1,13 @@
+<Application x:Class="MyFences.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+  <Application.Resources>
+    <SolidColorBrush x:Key="PanelBrush" Color="#ED181E2B" />
+    <Style TargetType="ToolTip">
+      <Setter Property="Background" Value="#FF242D40" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+  </Application.Resources>
+</Application>
