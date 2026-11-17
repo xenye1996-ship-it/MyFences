@@ -1,5 +1,5 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="MyFences" Manufacturer="MyFences" Version="1.0.1"
+  <Package Name="MyFences" Manufacturer="MyFences" Version="1.0.2"
            UpgradeCode="B5951849-3AF4-4FBC-89CD-28269734BC32" Scope="perUser" Language="1049">
     <MajorUpgrade DowngradeErrorMessage="Установлена более новая версия MyFences." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />

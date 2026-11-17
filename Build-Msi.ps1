@@ -9,5 +9,5 @@ if (-not (Test-Path -LiteralPath $taskWix)) {
 if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '.sdk\dotnet.exe')) { $env:DOTNET_ROOT = Join-Path $PSScriptRoot '.sdk' }
 $taskPublish = Join-Path $PSScriptRoot 'artifacts\MyFences'
 if (-not (Test-Path -LiteralPath (Join-Path $taskPublish 'MyFences.exe'))) { & (Join-Path $PSScriptRoot 'Build.ps1') }
-& $taskWix build (Join-Path $PSScriptRoot 'Installer\MyFences.wxs') -arch x64 -d "ProjectRoot=$PSScriptRoot" -d "PublishDir=$taskPublish" -o (Join-Path $PSScriptRoot 'artifacts\MyFences-1.0.1-win-x64.msi')
+& $taskWix build (Join-Path $PSScriptRoot 'Installer\MyFences.wxs') -arch x64 -d "ProjectRoot=$PSScriptRoot" -d "PublishDir=$taskPublish" -o (Join-Path $PSScriptRoot 'artifacts\MyFences-1.0.2-win-x64.msi')
 if ($LASTEXITCODE -ne 0) { throw 'Сборка MSI не выполнена.' }

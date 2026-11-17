@@ -51,6 +51,11 @@ internal static class SelfTests
             errors = await FileStorage.ImportAsync(state.Id, new[] { root });
             Check(errors.Count == 1 && File.Exists(target), "Reject moving an ancestor of storage", results);
             Check(ShellIcons.Get(target) != null, "Native shell icon extracted", results);
+            var area = new System.Drawing.Rectangle(0, 0, 1920, 1040);
+            Check(DesktopBounds.Clamp(new System.Drawing.Rectangle(1800, 990, 340, 260), area) == new System.Drawing.Rectangle(1580, 780, 340, 260), "Right/bottom edges exclude taskbar", results);
+            Check(DesktopBounds.Clamp(new System.Drawing.Rectangle(-500, -500, 340, 260), area) == new System.Drawing.Rectangle(0, 0, 340, 260), "Left/top edges", results);
+            Check(DesktopBounds.Clamp(new System.Drawing.Rectangle(200, 200, 4000, 3000), area) == area, "Oversized fence shrinks", results);
+            Check(DesktopBounds.Clamp(new System.Drawing.Rectangle(-1700, 600, 400, 300), new System.Drawing.Rectangle(-1600, -200, 1600, 900)) == new System.Drawing.Rectangle(-1600, 400, 400, 300), "Negative-coordinate secondary monitor", results);
             results.Add("PASS: " + results.Count + " checks");
             return 0;
         }

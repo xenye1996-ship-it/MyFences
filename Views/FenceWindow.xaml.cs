@@ -30,6 +30,9 @@ public partial class FenceWindow : Window
     internal event Action<FenceWindow>? RemoveRequested;
     private readonly ObservableCollection<FenceItem> _items = new();
     private readonly DispatcherTimer _refreshTimer;
+    private readonly DispatcherTimer _hoverCollapse = new() { Interval = TimeSpan.FromMilliseconds(350) };
+    private bool _hoverExpanded, _menuOpen;
+    private bool IsVisuallyRolled => State.RolledUp && !_hoverExpanded;
     private FileSystemWatcher? _watcher;
     private bool _moving, _placing, _quickHidden, _importing, _loadingItems, _reloadItems, _boundsReady;
     private Native.Point _startMouse;
@@ -62,6 +65,12 @@ public partial class FenceWindow : Window
         ToggleRoll();
         Native.GetWindowRect(Handle, out var rolled);
         if (Math.Abs(rolled.Bottom - rolled.Top - RolledHeight) > 2) throw new InvalidOperationException("Неверная высота свёрнутого блока.");
+        SetHoverExpanded(true);
+        Native.GetWindowRect(Handle, out var preview);
+        if (!State.RolledUp || Math.Abs(preview.Bottom - preview.Top - originalHeight) > 2) throw new InvalidOperationException("Наведение не раскрыло свёрнутый блок.");
+        SetHoverExpanded(false);
+        Native.GetWindowRect(Handle, out var restored);
+        if (!State.RolledUp || Math.Abs(restored.Bottom - restored.Top - RolledHeight) > 2) throw new InvalidOperationException("После ухода мыши блок не свернулся.");
         ToggleRoll();
         Native.GetWindowRect(Handle, out var expanded);
         if (Math.Abs(expanded.Bottom - expanded.Top - originalHeight) > 2) throw new InvalidOperationException("Не восстановлена высота блока.");
@@ -73,6 +82,15 @@ public partial class FenceWindow : Window
         InitializeComponent();
         TitleText.Text = state.Title;
         ItemsList.ItemsSource = _items;
+        MouseEnter += (_, _) => { _hoverCollapse.Stop(); SetHoverExpanded(true); };
+        MouseLeave += (_, _) => { if (State.RolledUp && _hoverExpanded) _hoverCollapse.Start(); };
+        DragEnter += (_, _) => { _hoverCollapse.Stop(); SetHoverExpanded(true); };
+        _hoverCollapse.Tick += (_, _) =>
+        {
+            if (_moving || _menuOpen || _importing || TitleEditor.IsKeyboardFocusWithin) return;
+            _hoverCollapse.Stop();
+            if (!IsMouseOver) SetHoverExpanded(false);
+        };
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(280) };
         _refreshTimer.Tick += async (_, _) => { _refreshTimer.Stop(); await ReloadAsync(); };
         DragLeave += (_, _) => DropOverlay.Visibility = Visibility.Collapsed;
@@ -89,6 +107,7 @@ public partial class FenceWindow : Window
         {
             IsClosed = true;
             _refreshTimer.Stop();
+            _hoverCollapse.Stop();
             _watcher?.Dispose();
         };
     }
@@ -126,23 +145,41 @@ public partial class FenceWindow : Window
         _placing = true;
         try
         {
-            Body.Visibility = Footer.Visibility = State.RolledUp ? Visibility.Collapsed : Visibility.Visible;
+            Body.Visibility = Footer.Visibility = IsVisuallyRolled ? Visibility.Collapsed : Visibility.Visible;
             RollButton.Content = State.RolledUp ? "⌄" : "⌃";
-            int height = State.RolledUp ? RolledHeight : State.Height;
-            DesktopHost.Place(Handle, Host, State.X, State.Y, State.Width, height);
+            int height = IsVisuallyRolled ? RolledHeight : State.Height;
+            var desired = new System.Drawing.Rectangle(State.X, State.Y, State.Width, height);
+            var screen = _moving && Native.GetCursorPos(out var cursor)
+                ? System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point(cursor.X, cursor.Y))
+                : System.Windows.Forms.Screen.FromRectangle(desired);
+            var bounded = DesktopBounds.Clamp(desired, screen.WorkingArea);
+            if (!_hoverExpanded || _moving) { State.X = bounded.X; State.Y = bounded.Y; }
+            State.Width = bounded.Width;
+            State.Height = State.RolledUp ? Math.Min(State.Height, screen.WorkingArea.Height) : bounded.Height;
+            height = bounded.Height;
+            DesktopHost.Place(Handle, Host, bounded.X, bounded.Y, State.Width, height);
         }
         finally { _placing = false; }
     }
 
     internal void CaptureBounds()
     {
-        if (Handle == 0 || IsClosed || !_boundsReady || _placing || !Native.GetWindowRect(Handle, out var r)) return;
+        if (Handle == 0 || IsClosed || !_boundsReady || _placing || (_hoverExpanded && !_moving) || !Native.GetWindowRect(Handle, out var r)) return;
         int width = r.Right - r.Left, height = r.Bottom - r.Top;
         if (width < 100 || height < 20) return;
         if (State.X == r.Left && State.Y == r.Top && State.Width == width && (State.RolledUp || State.Height == height)) return;
         State.X = r.Left; State.Y = r.Top; State.Width = width;
         if (!State.RolledUp) State.Height = height;
         Changed?.Invoke();
+    }
+
+    internal void KeepWithinScreen()
+    {
+        if (!IsLoaded || IsClosed || _moving || _placing || _hoverExpanded) return;
+        var rectangle = new System.Drawing.Rectangle(State.X, State.Y, State.Width, IsVisuallyRolled ? RolledHeight : State.Height);
+        var area = System.Windows.Forms.Screen.FromRectangle(rectangle).WorkingArea;
+        if (DesktopBounds.Clamp(rectangle, area) == rectangle) return;
+        ApplyBounds(); Changed?.Invoke();
     }
 
     private void Header_Down(object sender, MouseButtonEventArgs e)
@@ -206,9 +243,18 @@ public partial class FenceWindow : Window
     private void Roll_Click(object sender, RoutedEventArgs e) => ToggleRoll();
     private void ToggleRoll()
     {
+        _hoverCollapse.Stop();
+        _hoverExpanded = false;
         State.RolledUp = !State.RolledUp;
         ApplyBounds();
         Changed?.Invoke();
+    }
+
+    private void SetHoverExpanded(bool expanded)
+    {
+        if (!State.RolledUp || _hoverExpanded == expanded || IsClosed || _quickHidden) return;
+        _hoverExpanded = expanded;
+        ApplyBounds();
     }
 
     private void Title_Down(object sender, MouseButtonEventArgs e)
@@ -248,6 +294,8 @@ public partial class FenceWindow : Window
     private void Menu_Click(object sender, RoutedEventArgs e)
     {
         var menu = new ContextMenu();
+        menu.Opened += (_, _) => _menuOpen = true;
+        menu.Closed += (_, _) => { _menuOpen = false; if (_hoverExpanded && !IsMouseOver) _hoverCollapse.Start(); };
         void Add(string title, Action action) { var item = new MenuItem { Header = title }; item.Click += (_, _) => action(); menu.Items.Add(item); }
         Add("Переименовать", BeginRename);
         Add(State.RolledUp ? "Развернуть" : "Свернуть в заголовок", ToggleRoll);
@@ -339,13 +387,15 @@ public partial class FenceWindow : Window
         if (container?.DataContext is not FenceItem item) return;
         ItemsList.SelectedItem = item;
         e.Handled = true;
-        try { Native.GetCursorPos(out var p); ShellContextMenu.Show(ContentHandle, item.Path, p.X, p.Y); QueueRefresh(); }
+        try { _menuOpen = true; Native.GetCursorPos(out var p); ShellContextMenu.Show(ContentHandle, item.Path, p.X, p.Y); QueueRefresh(); }
         catch (Exception ex) { Report(ex); }
+        finally { _menuOpen = false; if (_hoverExpanded && !IsMouseOver) _hoverCollapse.Start(); }
     }
 
     internal void SetQuickHidden(bool hidden, bool animate = true)
     {
         _quickHidden = hidden;
+        if (hidden) { _hoverCollapse.Stop(); _hoverExpanded = false; }
         if (IsClosed) return;
         if (!hidden) { Show(); ApplyBounds(); Native.ShowWindow(Handle, 4); }
         if (!animate)

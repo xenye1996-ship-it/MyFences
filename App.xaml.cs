@@ -177,6 +177,7 @@ public partial class App : Application
                 }
                 else if (window.Host != host || Native.GetParent(window.Handle) != host)
                     window.Reattach();
+                window.KeepWithinScreen();
             }
         }
         catch (Exception ex)

@@ -9,7 +9,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>MyFences</AssemblyName>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <!-- WPF owns the application DPI context through app.manifest. -->
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
